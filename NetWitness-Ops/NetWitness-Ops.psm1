@@ -27,14 +27,22 @@ function Get-NWServices{
     foreach($service in $services){
         $service.IP = $service.IP.Substring(5)
         $IPandPort = $service.IP.split(":")
-        $service.IP = $IPandPort[0]
-        $service.Port = $IPandPort[1]
+
+        #What we really want for port is the API ports, so a little conversion before we return the values
+        $Port = ""
+        switch($IPandPort[1]){
+            "56002" {$Port = "50102"}
+            "56003" {$Port = "50103"}
+            "56004" {$Port = "50104"}
+            "56005" {$Port = "50105"}
+            Default {$Port = "Unknown"}
+        }
 
         $s = New-Object -TypeName psobject
         $s | Add-Member -MemberType Noteproperty -Name ID -Value $service.ID.Substring(3)
         $s | Add-Member -MemberType Noteproperty -Name Name -Value $service.Service.Substring(5)
         $s | Add-Member -MemberType Noteproperty -Name IP -Value $IPandPort[0]
-        $s | Add-Member -MemberType Noteproperty -Name Port -Value $IPandPort[1]
+        $s | Add-Member -MemberType Noteproperty -Name Port -Value $Port
         $NWServices+= $s
     }
     Return $NWServices
@@ -72,7 +80,7 @@ function Get-NWHosts{
         $h | Add-Member -MemberType Noteproperty -Name Name -Value $server.Name.Substring(5)
         $h | Add-Member -MemberType Noteproperty -Name IP -Value $server.IP.Substring(5)
         $h | Add-Member -MemberType Noteproperty -Name Version -Value $server.Version.Substring(8)
-        $h | Add-Member -MemberType Noteproperty -Name ApplianceUpdated -Value "No"
+        $h | Add-Member -MemberType Noteproperty -Name ApplianceUpdated -Value $false
         $NWHosts+= $h
     }
     Return $NWHosts
@@ -84,34 +92,30 @@ function Set-NWSSL{
         [System.Object] $NWService,
 
         [Parameter(Mandatory=$true, HelpMessage="Provide a credential object used to authenticate to the API")]
-        [pscredential] $apiCreds,
-
-        [Parameter(Mandatory=$true, HelpMessage="Specify whether to also update the appliance service on the host")]
-        [bool] $UpdateAppliance
+        [pscredential] $apiCreds
     )
     $NWHost = $NWService.IP
     $Port = $NWService.Port
     $ServiceType = $NWService.Name
     
-    $updateURI = "/rest/config/ssl?msg=set&force-content-type=text/plain&value=on"
-
-    $serviceURI = "https://$NWHost"+":"+$Port+$updateURI
-    
-    Invoke-RestMethod -Uri "$serviceURI" -Credential $apiCreds -SkipCertificateCheck
-
-    $serviceStopURI="https://$NWHost"+":50106/appliance?msg=stop&force-content-type=text/plain&service=$ServiceType"
-    $serviceStartURI="https://$NWHost"+":50106/appliance?msg=start&force-content-type=text/plain&service=$ServiceType"
-    
-    Invoke-RestMethod -Uri "$serviceStopURI" -Credential $apiCreds -SkipCertificateCheck
-    Start-Sleep -s 10
-    Invoke-RestMethod -Uri "$serviceStartURI" -Credential $apiCreds -SkipCertificateCheck
-
-    if($UpdateAppliance){
+    #If the port is 50106 we're updating the appliance service which is a little different from the other service types
+    if($Port -eq "50106"){
         $applianceURI = "https://$NWHost"+":50106"+$updateURI
         $serviceRestartURI = "https://$NWHost"+":50106/sys?msg=shutdown&force-content-type=text/plain&reason=Enable%20SSL"
         Invoke-RestMethod -Uri "$applianceURI" -Credential $apiCreds -SkipCertificateCheck
         Invoke-RestMethod -Uri "$serviceRestartURI" -Credential $apiCreds -SkipCertificateCheck
-    }    
+    }else{
+        $updateURI = "/rest/config/ssl?msg=set&force-content-type=text/plain&value=on"
+        $serviceURI = "https://$NWHost"+":"+$Port+$updateURI        
+        Invoke-RestMethod -Uri "$serviceURI" -Credential $apiCreds -SkipCertificateCheck
+
+        $serviceStopURI="https://$NWHost"+":50106/appliance?msg=stop&force-content-type=text/plain&service=$ServiceType"
+        $serviceStartURI="https://$NWHost"+":50106/appliance?msg=start&force-content-type=text/plain&service=$ServiceType"
+        
+        Invoke-RestMethod -Uri "$serviceStopURI" -Credential $apiCreds -SkipCertificateCheck
+        Start-Sleep -s 10
+        Invoke-RestMethod -Uri "$serviceStartURI" -Credential $apiCreds -SkipCertificateCheck
+    }   
 }
 
 function Set-NWPassword{
@@ -123,10 +127,7 @@ function Set-NWPassword{
         [pscredential] $apiCreds,
 
         [Parameter(Mandatory=$true, HelpMessage="Provide a credential object with the desired new password")]
-        [pscredential] $newCreds,
-
-        [Parameter(Mandatory=$true, HelpMessage="Specify whether to also update the appliance service on the host")]
-        [bool] $UpdateAppliance
+        [pscredential] $newCreds
     )
     $newPass = $newCreds.GetNetworkCredential().Password
     $passwordUpdateURI = "/users/accounts/admin/config/password?msg=set&force-content-type=text/plain&value=$newPass"
@@ -135,10 +136,46 @@ function Set-NWPassword{
 
     $serviceURI = "https://$thisIP"+":"+$thisPort+$passwordUpdateURI
     Invoke-RestMethod -Uri "$serviceURI" -Credential $apiCreds -SkipCertificateCheck
+}
 
-    if($UpdateAppliance){
-        $applianceURI = "https://$thisIP"+":50106"+$passwordUpdateURI
-        Invoke-RestMethod -Uri "$applianceURI" -Credential $apiCreds -SkipCertificateCheck
+function Get-NWRoles{
+    param (
+        [Parameter(Mandatory=$true, HelpMessage="A NW service object which should contain at least an IP and Port")]
+        [System.Object] $NWService,
+
+        [Parameter(Mandatory=$true, HelpMessage="Provide a credential object used to authenticate to the API")]
+        [pscredential] $apiCreds
+    )
+    $getRoles = "/users/groups?msg=ls&force-content-type=application/json"
+    $IP = $NWService.IP
+    $Port = $NWService.Port
+    $uri = "https://$IP"+":"+$Port+$getRoles
+    $groups = Invoke-RestMethod -Uri $uri -Credential $apiCreds -SkipCertificateCheck
+    return $groups.nodes
+}
+
+function Set-NWRoles{
+    param (
+        [Parameter(Mandatory=$true, HelpMessage="A NW service object which should contain at least an IP and Port")]
+        [System.Object] $NWService,
+
+        [Parameter(Mandatory=$true, HelpMessage="Provide a credential object used to authenticate to the API")]
+        [pscredential] $apiCreds,
+
+        [Parameter(Mandatory=$true, HelpMessage="Roles to apply, this should be from the output of Get-NWRoles")]
+        [System.Object] $roles
+    )
+    $builtInRoles = "Administrators", "Aggregation", "Analysts", "Data_Privacy_Officers", "Malware_Analysts", "Operators", "SOC_Managers"
+    $destinationHost = $NWService.IP
+    $port = $NWService.Port
+    $baseURI = "https://$destinationHost"+":"+$port
+    foreach($role in $roles){
+        if($builtInRoles -notcontains $role.name){
+            $name = $role.name
+            $rolesToAdd = $role.value -replace ",","%2C"
+            $addRoles = "/users/groups?msg=add&force-content-type=text/plain&name=$name&roles=$rolesToAdd"
+            Invoke-RestMethod -Uri $baseURI$addRoles -Credential $apiCreds -SkipCertificateCheck
+        }
     }
 
 }
