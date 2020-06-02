@@ -1,10 +1,6 @@
 $apiCreds = Get-Credential -Message "Enter current Admin password to connect" -UserName "admin"
 $updateURI = "/rest/config/ssl?msg=set&force-content-type=text/plain&value=on"
 
-$logDecoderPort="50102"
-$brokerPort="50103"
-$decoderPort="50104"
-$concentratorPort="50105"
 $appliancePort="50106"
 
 #Get a list of all known services and hosts using the orchestration client on the head unit

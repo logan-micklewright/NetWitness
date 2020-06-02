@@ -3,10 +3,6 @@ $newCreds = Get-Credential -Message "Enter desired new admin password" -UserName
 $newPass = $newCreds.GetNetworkCredential().Password
 $passwordUpdateURI = "/users/accounts/admin/config/password?msg=set&force-content-type=text/plain&value=$newPass"
 
-$logDecoderPort="50102"
-$brokerPort="50103"
-$decoderPort="50104"
-$concentratorPort="50105"
 $appliancePort="50106"
 
 #Get a list of all known services and hosts using the orchestration client on the head unit
