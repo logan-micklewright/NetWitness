@@ -22,6 +22,8 @@ if($service -eq "concentrator"){
     $port = "50103"
 }elseif($service -eq "logdecoder"){
     $port = "50102"
+}elseif($service -eq "logcollector"){
+    $port = "50101"
 }else{
     Write-Host "Service Type must be either broker, concentrator, decoder or logdecoder"
     return

@@ -152,7 +152,7 @@ do {
             $ISO_User_Pass = $ISO_Creds.GetNetworkCredential().Password
             #$ISU_User_Name = $ISO_Creds.GetNetworkCredential().Username
             $ISO_User_Name = "nwlnwnlpapp01/iso_readonly_user"
-            $share = '/\/\10.179.246.159/\ISO-images/\11.3.0.0/\rsa-nw-11.3.0.0.10816.iso'
+            $share = '10.179.246.159:/\ISO-images/\11.4.0.0/\rsa-nw-11.4.0.0.14000.iso'
             $IPAddresses | ForEach-Object -Parallel {
                 $ThisIP = $_.IP
                 racadm -r $ThisIP -u $using:user -p $using:pass remoteimage -c -u $using:ISO_User_Name -p $using:ISO_User_Pass -l $using:share --nocertwarn

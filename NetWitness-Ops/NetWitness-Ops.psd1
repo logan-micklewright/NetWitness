@@ -69,7 +69,7 @@ Description = 'A set of functions for managing NetWitness Operations'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @("Get-NWServices", "Get-NWHosts", "Set-NWSSL", "Set-NWPassword", "Copy-NWRoles")
+FunctionsToExport = @("Get-NWServices", "Get-NWHosts", "Get-NWDecoders", "Set-NWSSL", "Set-NWPassword", "Copy-NWRoles", "Get-Parsers")
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'

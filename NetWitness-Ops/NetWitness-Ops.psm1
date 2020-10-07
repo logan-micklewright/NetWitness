@@ -86,6 +86,19 @@ function Get-NWHosts{
     Return $NWHosts
 }
 
+function Get-NWDecoders{
+    param(
+        [Parameter(Mandatory=$true, ValueFromPipeline=$true, HelpMessage="Enter the hostname or IP of the NW head unit to query for available hosts")]
+        [String] $NWHost
+    )
+    $decoders = Get-NWServices -NWHost $NWHost | Where name -eq "Decoder"
+    $NWHosts = Get-NWHosts -NWHost $NWHost
+    foreach ($dec in $decoders) { 
+        $dec.name = $NWHosts | Where {$_.IP -eq $dec.IP} | Select-Object -ExpandProperty Name 
+    }
+    return $decoders
+}
+
 function Set-NWSSL{
     param(
         [Parameter(Mandatory=$true, HelpMessage="A NW service object which should contain at least a IP, Port, and Name")]
@@ -213,3 +226,31 @@ function Copy-NWRoles{
         }
     }
 }
+
+function Get-Parsers {
+    param (
+        [Parameter(Mandatory=$true, HelpMessage="A NW service object which should contain at least an IP and Name")]
+        [System.Object] $NWServices,
+
+        [Parameter(Mandatory=$true, HelpMessage="Provide a credential object used to authenticate to the API")]
+        [pscredential] $apiCreds
+    )
+    $queryURI = ":50104/decoder/parsers?msg=content&force-content-type=application/json&type=parsers"
+    $output = @{}
+    foreach($service in $NWServices){
+        $ip = $service.IP
+        $name = $service.Name
+        $serviceURI = "https://$ip"+$queryURI
+        Write-Host "Querying Parsers on $name"
+        $result = Invoke-RestMethod -Uri "$serviceURI" -Credential $apiCreds -SkipCertificateCheck
+        foreach ($node in $result.nodes){
+            if (($node.name -ne "uuid") -and ($node.name -ne "dateInstalled")){
+                $parsers = $result.nodes | Where {($_.name -ne "uuid") -and ($_.name -ne "dateInstalled")} | Select name
+                $output[$name] = $parsers.name
+            }
+        }
+    }
+
+return $output
+}
+
