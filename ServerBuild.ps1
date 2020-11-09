@@ -1,6 +1,8 @@
 Import-Module .\NetWitness-Ops
 Import-Module .\iDrac-Ops
 
+#Very much still a work in progress. I laid out the various sections that would be needed, most of them are implemented in stand-alone scripts I've already written, but I hope to pull it all together at some point
+
 #Get a list of servers to build, prompt user to choose individual IP address or csv file
 
 

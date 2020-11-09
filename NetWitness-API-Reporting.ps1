@@ -2,8 +2,7 @@ $today = (Get-Date).ToString('M-d-yyyy')
 $yesterday = (Get-Date).AddDays(-1).ToString('M-d-yyyy')
 
 $user = "admin"
-$encryptedPass = Get-Content .\scriptCreds.txt | ConvertTo-SecureString
-$credential = New-Object System.Management.Automation.PsCredential($user, $encryptedPass)
+$credential = Get-Credential -Message "Enter current Admin password to connect" -UserName "admin"
 
 # Build auth header
 $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $user, $credential.GetNetworkCredential().Password)))
@@ -14,7 +13,8 @@ $headers.Add('Authorization',('Basic {0}' -f $base64AuthInfo))
 $headers.Add('Accept','application/json')
 
 # Specify endpoint uri
-$uri = "https://nw11testpdec01.isus.emc.com:50104/index/stats"
+$nwServer = Read-Host -Prompt "Enter hostname or IP of NW server to query"
+$uri = "https://$nwServer"+":50104/index/stats"
 
 # Specify HTTP method
 $method = "get"
@@ -27,7 +27,7 @@ $stats.nodes
 $stats.nodes | Export-Csv -Path DecoderServiceStats.csv
 
 # Query additional services and api nodes
-$uri = "https://nw11testpdec01.isus.emc.com:50104/users/groups"
+$uri = "https://$nwServer"+":50104/users/groups"
 $groups = Invoke-RestMethod -Headers $headers -Method $method -Uri $uri -SkipCertificateCheck
 
 #Collect groups present on the decoder, in the larger prod environment this could be used to easily spot check and make sure permissions are matched up across all decoder/broker/concentrator nodes since each must be configured individually
@@ -35,19 +35,19 @@ $groups.nodes
 $groups.nodes | Export-Csv -Path DecoderGroups-$today.csv
 
 #Collect system statistics from the decoder, this is good for health monitoring
-$uri = "https://nw11testpdec01.isus.emc.com:50106/sys/stats"
+$uri = "https://$nwServer"+":50106/sys/stats"
 $decoderSysStats = Invoke-RestMethod -Headers $headers -Method $method -Uri $uri -SkipCertificateCheck
 $decoderSysStats.nodes
 $decoderSysStats.nodes | Export-Csv -Path DecoderSysStats-$today.csv
 
 #Collect system statistics from the broker service, in test this happens to also be the primary server host, in general we'd want to collect system stats from each host for monitoring purposes
-$uri = "https://nw11test.isus.emc.com:50103/sys/stats"
+$uri = "https://$nwServer"+":50103/sys/stats"
 $brokerSysStats = Invoke-RestMethod -Headers $headers -Method $method -Uri $uri -SkipCertificateCheck
 $brokerSysStats.nodes
 $brokerSysStats.nodes | Export-Csv -Path BrokerSysStats-$today.csv
 
 #Collect service statistics from the Broker service
-$uri = "https://nw11test.isus.emc.com:50103/index/stats"
+$uri = "https://$nwServer"+":50103/index/stats"
 $brokerServiceStats = Invoke-RestMethod -Headers $headers -Method $method -Uri $uri -SkipCertificateCheck
 $brokerServiceStats.nodes | Export-Csv -Path BrokerServiceStats-$today.csv
 

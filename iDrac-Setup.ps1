@@ -150,9 +150,8 @@ do {
             $i=1
             $ISO_Creds = Get-Credential -Message "Provide credentials for ISO Share"
             $ISO_User_Pass = $ISO_Creds.GetNetworkCredential().Password
-            #$ISU_User_Name = $ISO_Creds.GetNetworkCredential().Username
-            $ISO_User_Name = "nwlnwnlpapp01/iso_readonly_user"
-            $share = '10.179.246.159:/\ISO-images/\11.4.0.0/\rsa-nw-11.4.0.0.14000.iso'
+            $ISO_User_Name = $ISO_Creds.GetNetworkCredential().Username
+            $share = Read-Host -Prompt "Enter NFS share path that you want to mount the image from. Should be in the format: 1.2.3.4:/\folder/\filename"
             $IPAddresses | ForEach-Object -Parallel {
                 $ThisIP = $_.IP
                 racadm -r $ThisIP -u $using:user -p $using:pass remoteimage -c -u $using:ISO_User_Name -p $using:ISO_User_Pass -l $using:share --nocertwarn

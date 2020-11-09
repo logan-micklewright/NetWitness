@@ -11,7 +11,7 @@ param (
 )
 $port = ""
 $service = $serviceType
-$builtInRoles = "Administrators", "Aggregation", "Analysts", "Data_Privacy_Officers", "Malware_Analysts", "Operators", "SOC_Managers"
+$builtInRoles = "Administrators", "Aggregation", "Analysts", "Data_Privacy_Officers", "Malware_Analysts", "Operators", "SOC_Managers", "Reporting_Engine_Content_Administrators"
 
 
 if($service -eq "concentrator"){
