@@ -203,7 +203,7 @@ do {
                 
                 $powerStatus = racadm -r $ThisIP -u $using:user -p $using:pass get System.Power.Status --nocertwarn
                 #If the first query doesn't get an answer then it probably timed out or the credentials were bad, in either case no reason to waste time running the rest since timeouts take a full 5 minutes and it bogs everything down
-                if($powerStatus){
+                if($null -ne $powerStatus[4]){
                     $syslogServer = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Syslog.Server1 --nocertwarn
                     $syslogEnabled = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Syslog.SysLogEnable --nocertwarn
                     $dracVersion = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Info.version --nocertwarn
