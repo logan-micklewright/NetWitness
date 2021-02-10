@@ -113,7 +113,7 @@ do {
             $i=1
             $IPAddresses | ForEach-Object -Parallel {
                 $ThisIP = $_.IP
-                racadm -r $ThisIP -u $using:user -p $using:pass set iDRAC.Syslog.Server1 '10.254.66.31' --nocertwarn
+                racadm -r $ThisIP -u $using:user -p $using:pass set iDRAC.Syslog.Server1 '10.186.172.30' --nocertwarn
                 racadm -r $ThisIP -u $using:user -p $using:pass set iDRAC.Syslog.SysLogEnable '1' --nocertwarn
 
                 #This is purely for tracking status so that we have some output showing how many hosts have been processed so far
@@ -200,14 +200,19 @@ do {
                 #No way to query the password directly but if the commands run that means the password used was correct, any failure to return output likely means the password never got correctly configured on that host
                 Write-Output "Querying $ThisIP"
 
-                $dracName = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.NIC.DNSRacName --nocertwarn
-                $syslogServer = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Syslog.Server1 --nocertwarn
-                $syslogEnabled = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Syslog.SysLogEnable --nocertwarn
-                $dracVersion = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Info.version --nocertwarn
-                $biosVersion = racadm -r $ThisIP -u $using:user -p $using:pass get BIOS.SysInformation.SystemBiosVersion --nocertwarn
-                $storageVersion = racadm -r $ThisIP -u $using:user -p $using:pass Storage get controllers -o -p FirmwareVersion --nocertwarn
-                $remoteImage = racadm -r $ThisIP -u $using:user -p $using:pass remoteimage -s --nocertwarn
+                
                 $powerStatus = racadm -r $ThisIP -u $using:user -p $using:pass get System.Power.Status --nocertwarn
+                #If the first query doesn't get an answer then it probably timed out or the credentials were bad, in either case no reason to waste time running the rest since timeouts take a full 5 minutes and it bogs everything down
+                if($powerStatus){
+                    $syslogServer = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Syslog.Server1 --nocertwarn
+                    $syslogEnabled = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Syslog.SysLogEnable --nocertwarn
+                    $dracVersion = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Info.version --nocertwarn
+                    $biosVersion = racadm -r $ThisIP -u $using:user -p $using:pass get BIOS.SysInformation.SystemBiosVersion --nocertwarn
+                    $storageVersion = racadm -r $ThisIP -u $using:user -p $using:pass Storage get controllers -o -p FirmwareVersion --nocertwarn
+                    $remoteImage = racadm -r $ThisIP -u $using:user -p $using:pass remoteimage -s --nocertwarn
+                    $dracName = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.NIC.DNSRacName --nocertwarn
+                }
+                
                 
                #Clean up output
                 #racadm returns a bunch of garbage here, because it's multiple lines it's stored as an array, each element in the array is a single line stored as a string
@@ -230,6 +235,7 @@ do {
 
                 $statusReport = New-Object -TypeName PSObject -Property @{
                     iDRACName = $dracName[6].Substring($dracName[6].LastIndexOf('=')+1)
+                    iDRACIP = $ThisIP
                     iDRACVersion = $dracVersion[6].Substring($dracVersion[6].LastIndexOf('=')+1)
                     BIOSVersion = $biosVersion[6].Substring($biosVersion[6].LastIndexOf('=')+1)
                     PERCVersion = $storageVersion[5].Substring($storageVersion[5].LastIndexOf('=')+2)
@@ -238,15 +244,19 @@ do {
                     RemoteImage = $remoteImage[4]
                     RemoteImagePath = $remoteImage[10]
                     PowerState = $serverState
-                } | Select iDRACName, iDRACVersion, BIOSVersion, PERCVersion, SyslogServer, SyslogEnabled, RemoteImage, RemoteImagePath, PowerState
+                } | Select iDRACName, iDRACIP, iDRACVersion, BIOSVersion, PERCVersion, SyslogServer, SyslogEnabled, RemoteImage, RemoteImagePath, PowerState
                 $dict = $using:threadSafeDictionary
                 $dict.TryAdd($ThisIP, $statusReport) | Out-Null
                 $i = $dict.Count
                 Write-Output "Completed $i of $using:j"
             } -ThrottleLimit 10
+            #Write the output to the screen and file once all hosts have been queried
+            $today = Get-Date -Format "yyyyMMdd"
+            $reportName = "iDracReport-$today.csv"
             foreach ($key in $threadSafeDictionary.Keys){
                 Write-Output "Report for $key :"
                 $threadSafeDictionary[$key]
+                $threadSafeDictionary[$key] | Export-Csv -Path $reportName -Append
                 Write-Output "
                 "
             }
