@@ -98,11 +98,15 @@ foreach($device in $devices){
 
 $storageDevices
 
+#Decoders and log decoders both have a simliar layout, decodersmall volume and then decoder volume, where decodersmall must be partitioned and allocated first
+#Concentrators follow a different pattern with index and concentrator volumes where index is the smaller volume and must be partitioned second but allocated first
 if($service -eq "decoder" -Or $service -eq "logdecoder"){
-    #First thing to check is whether we have 2 storage devices or 4 (1 enclosure or 2)
-    if($storageDevices.Length -eq 4){
-        $decoderSmall = $storageDevices | sort Size | select DeviceName -first 2
-        $decoder = $storageDevices | sort Size -descending | select DeviceName -first 2
+    #First thing to check is how many storage devices we have, which should always be an even number otherwise we have mismatched drives
+    if($storageDevices.Length%2 -eq 0){
+        #If we sort by size of the storage device the first half of the devices will be the decodersmall volumes, second half (or first half if sorted descending) will be decoder volumes
+        $decoderSmall = $storageDevices | Sort-Object -Property Size | Select-Object DeviceName -First $storageDevices.Length/2
+        $decoder = $storageDevices | Sort-Object -Property Size | Select-Object DeviceName -Last $storageDevices.Length/2
+
         foreach($sd in $decoderSmall){
             $name=$sd.DeviceName
             $apiURI = "https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=partNew&force-content-type=text/plain&name=$name&service=$service&volume=$service"+"small&commit=1"
@@ -114,39 +118,31 @@ if($service -eq "decoder" -Or $service -eq "logdecoder"){
             Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
         }
         Start-Sleep -s 5
-        #Once storage devices are partitioned they can then be allocated to the services
-        $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=$service"+"small&commit=1"
-        Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
-        Start-Sleep -s 2
-        $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=$service"+"small0&commit=1"
-        Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
-        Start-Sleep -s 5
-        $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=$service&commit=1"
-        Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
-        Start-Sleep -s 2
-        $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=$service"+"0&commit=1"
-        Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
-        Start-Sleep -s 10
-
-    }elseif($storageDevices.Length -eq 2){
-        $decoderSmall = $storageDevices | sort Size | select DeviceName -first 1
-        $decoder = $storageDevices | sort Size -descending | select DeviceName -first 1
-        $name=$decoderSmall.DeviceName
-        $apiURI = "https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=partNew&force-content-type=text/plain&name=$name&service=$service&volume=$service"+"small&commit=1"
-        Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
-        Start-Sleep -s 2
-        $name=$decoder.DeviceName
-        $apiURI = "https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=partNew&force-content-type=text/plain&name=$name&service=$service&volume=$service&commit=1"
-        Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
-        Start-Sleep -s 5
 
         #Once storage devices are partitioned they can then be allocated to the services
         $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=$service"+"small&commit=1"
         Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
         Start-Sleep -s 2
+        $i=0
+        #Storage volumes start with just the volume name eg decodersmall, then subsequent devices with the same volume get a number starting with 0
+        #So if you have for example 4 decodersmall volumes they would be decodersmall, decodersmall0, decodersmall1, and decodersmall2
+        #This means if there are 8 total storage devices then length/2 is 4 but we need just 0, 1, and 2
+        while($i -lt (($storageDevices.Length/2)-1)){
+            $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=$service"+"small"+$i+"&commit=1"
+            Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
+            Start-Sleep -s 5
+            $i++
+        }        
         $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=$service&commit=1"
         Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
-        Start-Sleep -s 10
+        Start-Sleep -s 2
+        $i=0
+        while($i -lt (($storageDevices.Length/2)-1)){
+            $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=$service"+$i+"&commit=1"
+            Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
+            Start-Sleep -s 10
+            $i++
+        }
     }else{
         Write-Host "Invalid drive configuration, manual configuration required"
         return
@@ -154,9 +150,9 @@ if($service -eq "decoder" -Or $service -eq "logdecoder"){
 }
 
 if($service -eq "concentrator"){
-    if($storageDevices.Length -eq 4){
-        $index = $storageDevices | sort Size | select DeviceName -first 2
-        $concentrator = $storageDevices | sort Size -descending | select DeviceName -first 2
+    if($storageDevices.Length%2 -eq 0){
+        $index = $storageDevices | Sort-Object -Property Size | Select-Object DeviceName -First $storageDevices.Length/2
+        $concentrator = $storageDevices | Sort-Object -Property Size | Select-Object DeviceName -Last $storageDevices.Length/2
         foreach($sd in $concentrator){
             $name=$sd.DeviceName
             $apiURI = "https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=partNew&force-content-type=text/plain&name=$name&service=$service&volume=concentrator&commit=1"
@@ -172,35 +168,22 @@ if($service -eq "concentrator"){
         $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=index&commit=1"
         Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
         Start-Sleep -s 2
-        $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=index0&commit=1"
-        Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
-        Start-Sleep -s 5
+        $i=0
+        while($i -lt (($storageDevices.Length/2)-1)){
+            $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=index$i&commit=1"
+            Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
+            Start-Sleep -s 5
+            $i++
+        }
         $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=concentrator&commit=1"
         Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
         Start-Sleep -s 2
-        $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=concentrator0&commit=1"
-        Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
-        Start-Sleep -s 10
-
-    }elseif($storageDevices.Length -eq 2){
-        $index = $storageDevices | sort Size | select DeviceName -first 1
-        $concentrator = $storageDevices | sort Size -descending | select DeviceName -first 1
-        $name=$concentrator.DeviceName
-        $apiURI = "https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=partNew&force-content-type=text/plain&name=$name&service=$service&volume=concentrator&commit=1"
-        Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
-        Start-Sleep -s 2
-        $name=$index.DeviceName
-        $apiURI = "https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=partNew&force-content-type=text/plain&name=$name&service=$service&volume=index&commit=1"
-        Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
-        Start-Sleep -s 5
-
-        #Once storage devices are partitioned they can then be allocated to the services
-        $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=index&commit=1"
-        Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
-        Start-Sleep -s 2
-        $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=concentrator&commit=1"
-        Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
-        Start-Sleep -s 10
+        while($i -lt (($storageDevices.Length/2)-1)){
+            $apiURI="https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=srvAlloc&force-content-type=text/plain&service=$service&volume=concentrator$i&commit=1"
+            Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
+            Start-Sleep -s 10
+            $i++
+        }
     }else{
         Write-Host "Invalid drive configuration, manual configuration required"
         return
