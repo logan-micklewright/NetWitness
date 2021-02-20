@@ -489,9 +489,8 @@ function New-NWHost {
     )
     
     $rawSaltInfo = ssh root@$nodeIP cat /etc/salt/minion
-
-    #TODO Parse the raw salt info to get the actual minion ID
-    $minionID = $rawSaltInfo
+    $rawSaltInfo = $rawSaltInfo[4].Split(":")
+    $minionID = $rawSaltInfo[1].Trim()
 
     ssh root@$NWHeadUnit orchestration-cli-client --register-host -d $minionID -n $NWHostName -o $nodeIP --ipv4 $nodeIP
 }
@@ -507,10 +506,9 @@ function New-NWService {
         [string]$NWHeadUnit
     )
     
-    $rawSaltInfo = ssh root@$nodeIP cat /etc/salt/minion
-
-    #TODO Parse the raw salt info to get the actual minion ID
-    $minionID = $rawSaltInfo
+    $rawSaltInfo = ssh root@$NWHeadUnit salt -G "ipv4:$nodeIP" grains.get id
+    $rawSaltInfo = $rawSaltInfo.Split(":")
+    $minionID = $rawSaltInfo[0].Trim()
 
     ssh root@$NWHeadUnit orchestration-cli-client --install -c $ServiceType -o $minionID
 }
@@ -524,13 +522,23 @@ function Update-NWHost {
         [string]$NWHeadUnit
     )
     
-    $rawSaltInfo = ssh root@$nodeIP cat /etc/salt/minion
-
-    #TODO Parse the raw salt info to get the actual minion ID
-    $minionID = $rawSaltInfo
+    $rawSaltInfo = ssh root@$NWHeadUnit salt -G "ipv4:$nodeIP" grains.get id
+    $rawSaltInfo = $rawSaltInfo.Split(":")
+    $minionID = $rawSaltInfo[0].Trim()
 
     $currentVersion = ssh root@$NWHeadUnit upgrade-cli-client --list | grep AUSPLNWHU
     $currentVersion = $currentVersion.Substring($currentVersion.length-5)
 
     ssh root@$NWHeadUnit upgrade-cli-client -u --host-key $minionID --version $currentVersion
+}
+
+function New-NWWarehouseConnector {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true, HelpMessage="Provide the IP of the host to install warehouse connector on")]
+        [string]$nodeIP,
+        [Parameter(Mandatory=$true, HelpMessage="Provide the IP of the head unit")]
+        [string]$NWHeadUnit
+    )
+    ssh root@$NWHeadUnit warehouse-installer --host-addr $nodeIP
 }

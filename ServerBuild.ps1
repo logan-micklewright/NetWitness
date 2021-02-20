@@ -43,7 +43,6 @@ $NWHeadUnit = Read-Host -Prompt "Enter the IP address of the NetWitness Head Uni
 $apiCreds = Get-Credential -Message "Enter default Admin password to connect" -UserName "admin"
 $newCreds = Get-Credential -Message "Enter desired new admin password to set during build" -UserName "admin"
 
-$NWHosts = Get-NWHosts -NWHost $NWHeadUnit
 $NWServices = Get-NWServices -NWHost $NWHeadUnit
 
 #Prompt the user to select which service types they're building and select a reference broker, concentrator, decoder, and logdecoder as needed
@@ -156,6 +155,12 @@ foreach($service in $NewServices){
 #Configure aggregation/capture
 
 #If decoder or log decoder, install warehouse connector
+foreach($service in $NewServices){
+    if($service.Name -eq "decoder" -or $service.Name -eq "logdecoder"){
+        New-NWWarehouseConnector -nodeIP $service.IP -NWHeadUnit $NWHeadUnit
+    }
+}
+
 
 #Install InsightVM Agent
 
