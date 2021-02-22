@@ -104,8 +104,8 @@ if($service -eq "decoder" -Or $service -eq "logdecoder"){
     #First thing to check is how many storage devices we have, which should always be an even number otherwise we have mismatched drives
     if($storageDevices.Length%2 -eq 0){
         #If we sort by size of the storage device the first half of the devices will be the decodersmall volumes, second half (or first half if sorted descending) will be decoder volumes
-        $decoderSmall = $storageDevices | Sort-Object -Property Size | Select-Object DeviceName -First $storageDevices.Length/2
-        $decoder = $storageDevices | Sort-Object -Property Size | Select-Object DeviceName -Last $storageDevices.Length/2
+        $decoderSmall = $storageDevices | Sort-Object -Property Size | Select-Object DeviceName -First ($storageDevices.Length/2)
+        $decoder = $storageDevices | Sort-Object -Property Size | Select-Object DeviceName -Last ($storageDevices.Length/2)
 
         foreach($sd in $decoderSmall){
             $name=$sd.DeviceName
@@ -151,8 +151,8 @@ if($service -eq "decoder" -Or $service -eq "logdecoder"){
 
 if($service -eq "concentrator"){
     if($storageDevices.Length%2 -eq 0){
-        $index = $storageDevices | Sort-Object -Property Size | Select-Object DeviceName -First $storageDevices.Length/2
-        $concentrator = $storageDevices | Sort-Object -Property Size | Select-Object DeviceName -Last $storageDevices.Length/2
+        $index = $storageDevices | Sort-Object -Property Size | Select-Object DeviceName -First ($storageDevices.Length/2)
+        $concentrator = $storageDevices | Sort-Object -Property Size | Select-Object DeviceName -Last ($storageDevices.Length/2)
         foreach($sd in $concentrator){
             $name=$sd.DeviceName
             $apiURI = "https://$endpointToConfig"+":"+$appliancePort+"/appliance?msg=partNew&force-content-type=text/plain&name=$name&service=$service&volume=concentrator&commit=1"
