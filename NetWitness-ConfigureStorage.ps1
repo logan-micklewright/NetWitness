@@ -97,6 +97,20 @@ foreach($device in $devices){
 }
 
 $storageDevices
+#Normalize everything to GB so that we can correctly sort by size. If not able to do this properly then just let user know to configure manually
+foreach($sd in $storageDevices){
+    $size = ($sd.size -split ' ')[0]
+    $unit = ($sd.size -split ' ')[1]
+    if($unit -eq "GB"){
+        $sd.size = $size -as [int]
+    }elseif($unit -eq "TB"){
+        $size = $size -as [int]
+        $sd.size = $size*1000
+    }else{
+        Write-Host "Invalid drive configuration, manual configuration required"
+        return
+    }
+}
 
 #Decoders and log decoders both have a simliar layout, decodersmall volume and then decoder volume, where decodersmall must be partitioned and allocated first
 #Concentrators follow a different pattern with index and concentrator volumes where index is the smaller volume and must be partitioned second but allocated first

@@ -66,13 +66,13 @@ foreach($service in $NWservices){
         $thisService = $service.Service
         $thisService = $thisService -replace '-',''
         $thisName = $thisServer.Name
-        $serviceURI = "http://$thisIP"+":"+$thisPort+$updateURI
+        $serviceURI = "https://$thisIP"+":"+$thisPort+$updateURI
         Write-Host "Updating $thisService on $thisName"
         $result = Invoke-RestMethod -Uri "$serviceURI" -Credential $apiCreds -SkipCertificateCheck -AllowUnencryptedAuthentication
         if($result -match "Success"){
 
-            $serviceStopURI="http://$thisIP"+":"+$appliancePort+"/appliance?msg=stop&force-content-type=text/plain&service=$thisService"
-            $serviceStartURI="http://$thisIP"+":"+$appliancePort+"/appliance?msg=start&force-content-type=text/plain&service=$thisService"
+            $serviceStopURI="https://$thisIP"+":"+$appliancePort+"/appliance?msg=stop&force-content-type=text/plain&service=$thisService"
+            $serviceStartURI="https://$thisIP"+":"+$appliancePort+"/appliance?msg=start&force-content-type=text/plain&service=$thisService"
             
             Invoke-RestMethod -Uri "$serviceStopURI" -Credential $apiCreds -SkipCertificateCheck -AllowUnencryptedAuthentication
             Start-Sleep -s 10
@@ -81,8 +81,8 @@ foreach($service in $NWservices){
             #The appliance service on each host also needs updated but because hosts run multiple services and we don't want to try and update it mutiple times we'll check to see if we've already done this one
             #In order for this to work an extra field has been added to the servers while they were being parsed called ApplianceUpdated which is set to no by default and then updated to yes the first time this block runs
             if($thisServer.ApplianceUpdated -eq "No"){
-                $applianceURI = "http://$thisIP"+":"+$appliancePort+$updateURI
-                $serviceRestartURI = "http://$thisIP"+":"+$appliancePort+"/sys?msg=shutdown&force-content-type=text/plain&reason=Enable%20SSL"
+                $applianceURI = "https://$thisIP"+":"+$appliancePort+$updateURI
+                $serviceRestartURI = "https://$thisIP"+":"+$appliancePort+"/sys?msg=shutdown&force-content-type=text/plain&reason=Enable%20SSL"
                 Write-Host "Updating Appliance Service on $thisName"
                 Invoke-RestMethod -Uri "$applianceURI" -Credential $apiCreds -SkipCertificateCheck -AllowUnencryptedAuthentication
                 Invoke-RestMethod -Uri "$serviceRestartURI" -Credential $apiCreds -SkipCertificateCheck -AllowUnencryptedAuthentication

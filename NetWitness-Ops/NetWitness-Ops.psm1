@@ -133,7 +133,7 @@ function Set-NWSSL{
 
 function Set-NWPassword{
     param(
-        [Parameter(Mandatory=$true, HelpMessage="A NW service object which should contain at least an IP and Port")]
+        [Parameter(Mandatory=$true, ValueFromPipeline=$true, HelpMessage="A NW service object which should contain at least an IP and Port")]
         [System.Object] $NWService,
 
         [Parameter(Mandatory=$true, HelpMessage="Provide a credential object used to authenticate to the API")]
