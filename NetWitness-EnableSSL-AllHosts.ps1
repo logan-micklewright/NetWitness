@@ -68,15 +68,15 @@ foreach($service in $NWservices){
         $thisName = $thisServer.Name
         $serviceURI = "https://$thisIP"+":"+$thisPort+$updateURI
         Write-Host "Updating $thisService on $thisName"
-        $result = Invoke-RestMethod -Uri "$serviceURI" -Credential $apiCreds -SkipCertificateCheck -AllowUnencryptedAuthentication
+        $result = Invoke-RestMethod -Uri "$serviceURI" -Credential $apiCreds -SkipCertificateCheck
         if($result -match "Success"){
 
             $serviceStopURI="https://$thisIP"+":"+$appliancePort+"/appliance?msg=stop&force-content-type=text/plain&service=$thisService"
             $serviceStartURI="https://$thisIP"+":"+$appliancePort+"/appliance?msg=start&force-content-type=text/plain&service=$thisService"
             
-            Invoke-RestMethod -Uri "$serviceStopURI" -Credential $apiCreds -SkipCertificateCheck -AllowUnencryptedAuthentication
+            Invoke-RestMethod -Uri "$serviceStopURI" -Credential $apiCreds -SkipCertificateCheck
             Start-Sleep -s 10
-            Invoke-RestMethod -Uri "$serviceStartURI" -Credential $apiCreds -SkipCertificateCheck -AllowUnencryptedAuthentication
+            Invoke-RestMethod -Uri "$serviceStartURI" -Credential $apiCreds -SkipCertificateCheck
 
             #The appliance service on each host also needs updated but because hosts run multiple services and we don't want to try and update it mutiple times we'll check to see if we've already done this one
             #In order for this to work an extra field has been added to the servers while they were being parsed called ApplianceUpdated which is set to no by default and then updated to yes the first time this block runs

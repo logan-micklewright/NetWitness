@@ -542,3 +542,51 @@ function New-NWWarehouseConnector {
     )
     ssh root@$NWHeadUnit warehouse-installer --host-addr $nodeIP
 }
+
+function Remove-Feed {
+    param (
+        [Parameter(Mandatory=$true, HelpMessage="A NW service object which should contain at least an IP and Name")]
+        [System.Object] $NWServices,
+
+        [Parameter(Mandatory=$true, HelpMessage="The name of the feed to remove")]
+        [System.Object] $feed,
+
+        [Parameter(Mandatory=$true, HelpMessage="Provide a credential object used to authenticate to the API")]
+        [pscredential] $apiCreds
+    )
+    $queryURI = ":50104/decoder/parsers?msg=feed&force-content-type=text/plain&op=delete&file=$feed"
+    foreach($service in $NWServices){
+        $ip = $service.IP
+        $name = $service.Name
+        $serviceURI = "https://$ip"+$queryURI
+        Write-Host "Deleting feed on $name"
+        Invoke-RestMethod -Uri "$serviceURI" -Credential $apiCreds -SkipCertificateCheck
+    }
+}
+
+function Get-Feeds {
+    param (
+        [Parameter(Mandatory=$true, HelpMessage="A NW service object which should contain at least an IP and Name")]
+        [System.Object] $NWServices,
+
+        [Parameter(Mandatory=$true, HelpMessage="Provide a credential object used to authenticate to the API")]
+        [pscredential] $apiCreds
+    )
+    $queryURI = ":50104/decoder/parsers?msg=content&force-content-type=application/json&type=feeds"
+    $output = @{}
+    foreach($service in $NWServices){
+        $ip = $service.IP
+        $name = $service.Name
+        $serviceURI = "https://$ip"+$queryURI
+        Write-Host "Querying Feeds on $name"
+        $result = Invoke-RestMethod -Uri "$serviceURI" -Credential $apiCreds -SkipCertificateCheck
+        foreach ($node in $result.nodes){
+            if (($node.name -ne "name") -and ($node.name -ne "dateInstalled")){
+                $parsers = $result.nodes | Where-Object -FilterScript {($_.name -ne "name") -and ($_.name -ne "dateInstalled")} | Select-Object -Property name
+                $output[$name] = $parsers.name
+            }
+        }
+    }
+
+return $output
+}

@@ -77,7 +77,7 @@ do {
     switch ($selection) {
         '1' {
             #Set the iDRAC password
-            $NewCred = Get-Credential -Message "Provide desired new login info for iDRAC"
+            $NewCred = Get-Credential -Message "Provide desired new login info for iDRAC" -UserName 'root'
             $NewPassword = $NewCred.GetNetworkCredential().Password
             $IPAddresses | ForEach-Object -Parallel {
                 $ThisIP = $_.IP
@@ -111,9 +111,10 @@ do {
         '3' {
             #Configure syslog
             $i=1
+            $syslogServer = Read-Host -Prompt "Enter IP address of syslog server"
             $IPAddresses | ForEach-Object -Parallel {
                 $ThisIP = $_.IP
-                racadm -r $ThisIP -u $using:user -p $using:pass set iDRAC.Syslog.Server1 '10.186.172.30' --nocertwarn
+                racadm -r $ThisIP -u $using:user -p $using:pass set iDRAC.Syslog.Server1 $syslogServer --nocertwarn
                 racadm -r $ThisIP -u $using:user -p $using:pass set iDRAC.Syslog.SysLogEnable '1' --nocertwarn
 
                 #This is purely for tracking status so that we have some output showing how many hosts have been processed so far
@@ -146,7 +147,7 @@ do {
             } -ThrottleLimit 3
         } 
         '5' {
-            #Mount hardcoded iso file
+            #Mount iso file
             $i=1
             $ISO_Creds = Get-Credential -Message "Provide credentials for ISO Share"
             $ISO_User_Pass = $ISO_Creds.GetNetworkCredential().Password
@@ -244,7 +245,7 @@ do {
                     RemoteImage = $remoteImage[4]
                     RemoteImagePath = $remoteImage[10]
                     PowerState = $serverState
-                } | Select iDRACName, iDRACIP, iDRACVersion, BIOSVersion, PERCVersion, SyslogServer, SyslogEnabled, RemoteImage, RemoteImagePath, PowerState
+                } | Select-Object iDRACName, iDRACIP, iDRACVersion, BIOSVersion, PERCVersion, SyslogServer, SyslogEnabled, RemoteImage, RemoteImagePath, PowerState
                 $dict = $using:threadSafeDictionary
                 $dict.TryAdd($ThisIP, $statusReport) | Out-Null
                 $i = $dict.Count
