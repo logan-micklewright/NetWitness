@@ -5,7 +5,10 @@ Simple configuration menu to automate standard tasks we need to complete on each
 #>
 
 #Prompt user for credentials so that we don't have to store in the script
-$currentCred = Get-Credential -Message "Provide credentials to connect to iDRAC"
+
+Import-Module iDrac-Ops
+
+$currentCred = Get-Credential -Message "Provide credentials to connect to iDRAC" -UserName "root"
 $user = $CurrentCred.GetNetworkCredential().Username
 $pass = $CurrentCred.GetNetworkCredential().Password
 
@@ -78,10 +81,11 @@ do {
         '1' {
             #Set the iDRAC password
             $NewCred = Get-Credential -Message "Provide desired new login info for iDRAC" -UserName 'root'
-            $NewPassword = $NewCred.GetNetworkCredential().Password
+            #Can delete this line as soon as I've ported everything else away from racadm
+            $NewPassword = $newCreds.GetNetworkCredential().Password        
+
             $IPAddresses | ForEach-Object -Parallel {
-                $ThisIP = $_.IP
-                racadm -r $ThisIP -u $using:user -p $using:pass set iDRAC.Users.2.Password $using:NewPassword --nocertwarn
+                Set-iDracPassword -idracIP $_.IP -apiCreds $using:currentCred -newCreds $using:NewCred                
 
                 #This is purely for tracking status so that we have some output showing how many hosts have been processed so far
                 $dict = $using:threadSafeDictionary
@@ -91,6 +95,8 @@ do {
             } -ThrottleLimit 10
 
             #In the event that we change password we need to set the current password used by the script to the new password just set or any subsequent menu actions will fail
+            $currentCred = $NewCred
+            #Can delete this line as soon as I've ported everything else away from racadm
             $pass = $NewPassword
         } 
         '2' {
@@ -168,8 +174,7 @@ do {
             #Unmount the mounted iso
             $i=1
             $IPAddresses | ForEach-Object -Parallel {
-                $ThisIP = $_.IP
-                racadm -r $ThisIP -u $using:user -p $using:pass remoteimage -d --nocertwarn
+                Remove-VirtualMedia -idracIP $_.IP -apiCreds $using:currentCred
 
                 #This is purely for tracking status so that we have some output showing how many hosts have been processed so far
                 $dict = $using:threadSafeDictionary
@@ -201,50 +206,30 @@ do {
                 #No way to query the password directly but if the commands run that means the password used was correct, any failure to return output likely means the password never got correctly configured on that host
                 Write-Output "Querying $ThisIP"
 
-                
-                $powerStatus = racadm -r $ThisIP -u $using:user -p $using:pass get System.Power.Status --nocertwarn
-                #If the first query doesn't get an answer then it probably timed out or the credentials were bad, in either case no reason to waste time running the rest since timeouts take a full 5 minutes and it bogs everything down
-                if($null -ne $powerStatus[4]){
-                    $syslogServer = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Syslog.Server1 --nocertwarn
-                    $syslogEnabled = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Syslog.SysLogEnable --nocertwarn
-                    $dracVersion = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Info.version --nocertwarn
-                    $biosVersion = racadm -r $ThisIP -u $using:user -p $using:pass get BIOS.SysInformation.SystemBiosVersion --nocertwarn
-                    $storageVersion = racadm -r $ThisIP -u $using:user -p $using:pass Storage get controllers -o -p FirmwareVersion --nocertwarn
-                    $remoteImage = racadm -r $ThisIP -u $using:user -p $using:pass remoteimage -s --nocertwarn
-                    $dracName = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.NIC.DNSRacName --nocertwarn
-                }
-                
-                
-               #Clean up output
-                #racadm returns a bunch of garbage here, because it's multiple lines it's stored as an array, each element in the array is a single line stored as a string
-                #using some string indexing and splitting we clean it up into just the values we want and build a PS object out of it that will give nicer output options
-                
-                $serverState = "Unknown"
-                if($powerStatus[4] -eq 0){
-                    $serverState = "Powered Off"
-                }elseif($powerStatus[4] -eq 1){
-                    $serverState = "Powered On"
-                }
+                $systemInfo = Get-SystemInfo -idracIP $ThisIP -apiCreds $using:currentCred
 
-                $syslogEnabled = $syslogEnabled[6].Substring($syslogEnabled[6].LastIndexOf('=')+1)
-                if($syslogEnabled -eq "Enabled"){
-                    $syslogEnabled = "Yes"
-                }else{
-                    $syslogEnabled = "No"
-                }
+                $powerStatus = $systemInfo.PowerState
+                $syslogServer = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Syslog.Server1 --nocertwarn
+                $syslogEnabled = racadm -r $ThisIP -u $using:user -p $using:pass get iDRAC.Syslog.SysLogEnable --nocertwarn
+                $dracVersion = Get-iDRACVersion -idracIP $ThisIP -apiCreds $using:currentCred
+                $biosVersion = $systemInfo.BiosVersion
+                $storageVersion = Get-StorageControllerVersion -idracIP $ThisIP -apiCreds $using:currentCred
+                $remoteImage = Get-VirtualMediaStatus -idracIP $ThisIP -apiCreds $using:currentCred
+                $dracName = Get-iDracName -idracIP $ThisIP -apiCreds $using:currentCred
+                
 
 
                 $statusReport = New-Object -TypeName PSObject -Property @{
-                    iDRACName = $dracName[6].Substring($dracName[6].LastIndexOf('=')+1)
+                    iDRACName = $dracName
                     iDRACIP = $ThisIP
-                    iDRACVersion = $dracVersion[6].Substring($dracVersion[6].LastIndexOf('=')+1)
-                    BIOSVersion = $biosVersion[6].Substring($biosVersion[6].LastIndexOf('=')+1)
-                    PERCVersion = $storageVersion[5].Substring($storageVersion[5].LastIndexOf('=')+2)
+                    iDRACVersion = $dracVersion
+                    BIOSVersion = $biosVersion
+                    PERCVersion = $storageVersion
                     SyslogServer = $syslogServer[6].Substring($syslogServer[6].LastIndexOf('=')+1)
                     SyslogEnabled = $syslogEnabled
-                    RemoteImage = $remoteImage[4]
-                    RemoteImagePath = $remoteImage[10]
-                    PowerState = $serverState
+                    RemoteImage = $remoteImage.ConnectedVia
+                    RemoteImagePath = $remoteImage.Image
+                    PowerState = $powerStatus
                 } | Select-Object iDRACName, iDRACIP, iDRACVersion, BIOSVersion, PERCVersion, SyslogServer, SyslogEnabled, RemoteImage, RemoteImagePath, PowerState
                 $dict = $using:threadSafeDictionary
                 $dict.TryAdd($ThisIP, $statusReport) | Out-Null
