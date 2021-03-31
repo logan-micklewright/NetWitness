@@ -306,7 +306,7 @@ function Invoke-FirmwareUpdate{
     }else{
         #Now that the image file is uploaded time to install it
         $headers = @{"Accept"="application/json"}
-        $JsonBody = '{"ImageURI"="'+$result.headers.location+'"}'
+        $JsonBody = '{"ImageURI":"'+$result.headers.location+'"}'
         $uri = "https://$idracIP/redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate"
         $result = Invoke-RestMethod -SkipCertificateCheck -Uri $uri -Credential $apiCreds -Body $JsonBody -Method POST -Headers $headers -ContentType 'application/json'
         return $result
