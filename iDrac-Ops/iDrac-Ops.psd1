@@ -69,7 +69,7 @@ PowerShellVersion = '7.0'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @("Get-BIOSVersion", "Get-iDRACVersion", "Get-SystemInfo", "Get-StorageControllerVersion", "Get-VirtualMediaStatus", "Remove-VirtualMedia", "Get-iDracName", "Set-iDracPassword")
+FunctionsToExport = @("Get-BIOSVersion", "Get-iDRACVersion", "Get-SystemInfo", "Get-StorageControllerVersion", "Get-VirtualMediaStatus", "Remove-VirtualMedia", "Set-RemoteMedia", "Get-iDracName", "Set-iDracPassword", "Set-iDracName", "Set-iDracSyslog", "Invoke-PowerCycle", "Invoke-FirmwareUpdate", "Get-iDracAttributes")
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
