@@ -110,12 +110,20 @@ function Set-RemoteMedia{
         [Parameter(Mandatory=$true, HelpMessage="The path to the ISO file")]
         [String] $isoPath
     )
-    $body = '{{"Image" : "{0}"}}' -f $isoPath
+    $sharetype="NFS"
+    #Split the IP address and the share into separate variables
+    $ipaddress=$isoPath.Split(":")[0]
+    $sharename=($isoPath.Split(":")[1])
+    #Split the share path and the actual filename into separate variables
+    $imagename=$sharename.Substring($sharename.LastIndexOf("\")+1)
+    $sharename=$sharename.Substring(0,$sharename.LastIndexOf("\"))
+
+    $JsonBody = @{'ImageName'=$imagename;'IPAddress'=$ipaddress;'ShareType'=$sharetype;'ShareName'=$sharename} | ConvertTo-Json -Compress
 
     $headers = @{"Accept"="application/json"}
-    $uri = "https://$idracIP/redfish/v1/Managers/iDRAC.Embedded.1/VirtualMedia/CD/Actions/VirtualMedia.InsertMedia"
+    $uri = "https://$idracIP/redfish/v1/Dell/Systems/System.Embedded.1/DellOSDeploymentService/Actions/DellOSDeploymentService.ConnectNetworkISOImage"
 
-    $result = Invoke-RestMethod -Method POST -Uri $uri -Credential $apiCreds -SkipCertificateCheck -Headers $headers -Body $body -ContentType 'application/json' -StatusCodeVariable statusCode
+    $result = Invoke-RestMethod -Method POST -Uri $uri -Credential $apiCreds -SkipCertificateCheck -Headers $headers -Body $JsonBody -ContentType 'application/json' -StatusCodeVariable statusCode
     
     if($statusCode -eq 200){
         return "Success"

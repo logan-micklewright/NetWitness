@@ -69,6 +69,7 @@ switch ($selection) {
     }
 }
 
+
 $j=$IPAddresses.Count
 
 #Main part of the script begins here, display a menu for the user and just keep looping back to the menu after each action until the user choose 'q'

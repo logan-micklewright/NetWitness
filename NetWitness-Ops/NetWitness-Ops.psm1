@@ -279,7 +279,7 @@ function Set-NWStorage {
         return
     }
 
-    $apiCreds = Get-Credential -Message "Enter current Admin password to connect" -UserName "admin"
+    #$apiCreds = Get-Credential -Message "Enter current Admin password to connect" -UserName "admin"
 
     #List storage controllers/enclosures
     $raidList = "/appliance?msg=raidList&force-content-type=application/json"
@@ -522,14 +522,14 @@ function Update-NWHost {
         [string]$NWHeadUnit
     )
     
-    $rawSaltInfo = ssh root@$NWHeadUnit salt -G "ipv4:$nodeIP" grains.get id
+    $rawSaltInfo = ssh root@$NWHeadUnit "salt -G `"ipv4:$nodeIP`" grains.get id"
     $rawSaltInfo = $rawSaltInfo.Split(":")
     $minionID = $rawSaltInfo[0].Trim()
 
-    $currentVersion = ssh root@$NWHeadUnit upgrade-cli-client --list | grep AUSPLNWHU
-    $currentVersion = $currentVersion.Substring($currentVersion.length-5)
+    $currentVersion = ssh root@$NWHeadUnit "upgrade-cli-client --list | grep AUSPLNWHU"
+    $currentVersion = $currentVersion.substring($currentVersion.IndexOf("VERSION=")+8)
 
-    ssh root@$NWHeadUnit upgrade-cli-client -u --host-key $minionID --version $currentVersion
+    ssh root@$NWHeadUnit "upgrade-cli-client -u --host-key $minionID --version $currentVersion"
 }
 
 function New-NWWarehouseConnector {

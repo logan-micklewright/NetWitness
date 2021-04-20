@@ -101,9 +101,10 @@ foreach($service in $NewServices){
 }
 
 
-#Enable SSL on the rest api
+#Enable SSL on the rest api and then set the password
 foreach($service in $NewServices){
-    Set-NWSSL -NWService $service -apiCreds $apiCreds    
+    Set-NWSSL -NWService $service -apiCreds $apiCreds  
+    Set-NWPassword -NWService $service -apiCreds $apiCreds -newCreds $newCreds  
 }
 foreach($server in $NewHosts){
     $service = New-Object -TypeName psobject
@@ -111,20 +112,9 @@ foreach($server in $NewHosts){
     $service | Add-Member -MemberType Noteproperty -Name IP -Value $server.IP
     $service | Add-Member -MemberType Noteproperty -Name Port -Value "50106"
     Set-NWSSL -NWService $service -apiCreds $apiCreds
+    Set-NWPassword -NWService $service -apiCreds $apiCreds -newCreds $newCreds
 }
 
-#Change the admin password
-
-foreach($service in $NewServices){
-    Set-NWPassword -NWService $service -apiCreds $apiCreds -newCreds $newCreds    
-}
-foreach($server in $NewHosts){
-    $service = New-Object -TypeName psobject
-    $service | Add-Member -MemberType Noteproperty -Name Name -Value "Appliance"
-    $service | Add-Member -MemberType Noteproperty -Name IP -Value $server.IP
-    $service | Add-Member -MemberType Noteproperty -Name Port -Value "50106"
-    Set-NWPassword -NWService $service -apiCreds $apiCreds -newCreds $newCreds 
-}
 
 #Now that all services are update the apiCreds are the newCreds from here on out
 $apiCreds = $newCreds
@@ -153,6 +143,7 @@ foreach($service in $NewServices){
 
 
 #Configure aggregation/capture
+
 
 #If decoder or log decoder, install warehouse connector
 foreach($service in $NewServices){
