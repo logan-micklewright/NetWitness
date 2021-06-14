@@ -28,5 +28,5 @@ foreach ($role in $roles){
     $formattedRoles += $permissionObject
 }
 
-
-$formattedRoles | Export-Csv -Path ./NetWitnessRoles.csv
+$today = Get-Date -Format FileDate
+$formattedRoles | Export-Csv -Path ./NetWitnessRoles-$headUnit-$today.csv
