@@ -33,9 +33,7 @@ foreach ($role in $roles){
     $formattedRoles += $permissionObject
 }
 
-$formattedRoles = $formattedRoles | %{$obj = new-object psobject; `
-    $_.psobject.properties | Sort Name | `
-        %{Add-Member -Inp $obj NoteProperty $_.Name $_.Value}; $obj}
+$formattedRoles = $formattedRoles | %{$obj = new-object psobject; $_.psobject.properties | Sort Name | %{Add-Member -Inp $obj NoteProperty $_.Name $_.Value}; $obj}
 
      
 $formattedRoles | ConvertTo-Csv | Out-File -FilePath NetWitnessRoles.csv

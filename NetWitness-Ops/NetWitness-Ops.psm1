@@ -590,3 +590,41 @@ function Get-Feeds {
 
 return $output
 }
+
+function Get-ServerName{
+    param (
+        [Parameter(Mandatory=$true, HelpMessage="A NW service object which should contain at least an IP and Port")]
+        [System.Object] $NWService,
+
+        [Parameter(Mandatory=$true, HelpMessage="Provide a credential object used to authenticate to the API")]
+        [pscredential] $apiCreds
+    )
+    $getInfo = "/sys/stats?msg=ls&force-content-type=application/json"
+    $IP = $NWService.IP
+    $Port = $NWService.Port
+    $uri = "https://$IP"+":"+$Port+$getInfo
+    $info = Invoke-RestMethod -Uri $uri -Credential $apiCreds -SkipCertificateCheck
+    return ($info.nodes | Where-Object -Property name -eq "hostname").value
+}
+
+function Get-Connections{
+    param (
+        [Parameter(Mandatory=$true, HelpMessage="A NW service object which should contain at least an IP and Port")]
+        [System.Object] $NWService,
+
+        [Parameter(Mandatory=$true, HelpMessage="Provide a credential object used to authenticate to the API")]
+        [pscredential] $apiCreds
+    )
+    if($NWService.ServiceType -eq "Broker"){
+        $getConnections = "/broker/devices?msg=ls&force-content-type=application/json"
+    }elseif ($NWService.ServiceType -eq "Concentrator") {
+        $getConnections = "/concentrator/devices?msg=ls&force-content-type=application/json"
+    }else{
+        return "Invalid Service Type"
+    }
+    $IP = $NWService.IP
+    $Port = $NWService.Port
+    $uri = "https://$IP"+":"+$Port+$getConnections
+    $connections = Invoke-RestMethod -Uri $uri -Credential $apiCreds -SkipCertificateCheck
+    return $connections
+}
