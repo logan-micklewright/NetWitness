@@ -321,3 +321,39 @@ function Invoke-FirmwareUpdate{
     }
     
 }
+
+function Add-iDracUser{
+    param(
+        [Parameter(Mandatory=$true, HelpMessage="The IP address of the iDRAC to query")]
+        [System.Object] $idracIP,
+
+        [Parameter(Mandatory=$true, HelpMessage="Provide a credential object used to authenticate to the API")]
+        [pscredential] $apiCreds,
+
+        [Parameter(Mandatory=$true, HelpMessage="Provide a credential object used to set the password for the new user")]
+        [pscredential] $newCreds,
+
+        [Parameter(Mandatory=$true, HelpMessage="Provide a name for the new user")]
+        [string] $userName,
+
+        [Parameter(Mandatory=$true, HelpMessage="The role to add the new user to")]
+        [string] $role,
+
+        [Parameter(Mandatory=$true, HelpMessage="Provide a numberical user id between 3-20")]
+        [string] $userId
+    )
+    $NewPassword = $newCreds.GetNetworkCredential().Password
+    
+    $JsonBody = @{UserName = $userName; Password= $NewPassword; RoleId = $role; Enabled = $true} | ConvertTo-Json -Compress
+
+    $headers = @{"Accept"="application/json"}
+    $uri = "https://$idracIP/redfish/v1/Managers/iDRAC.Embedded.1/Accounts/$userId"
+
+    $result = Invoke-RestMethod -Method PATCH -Uri $uri -Credential $apiCreds -SkipCertificateCheck -Headers $headers -Body $JsonBody -ContentType 'application/json' -StatusCodeVariable statusCode
+    
+    if($statusCode -eq 200){
+        return "Success"
+    }else{
+        return $result
+    }
+}
