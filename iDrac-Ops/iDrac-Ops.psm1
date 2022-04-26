@@ -18,13 +18,14 @@ function Get-StorageControllerVersion{
     param(
         [Parameter(Mandatory=$true, HelpMessage="The IP address of the iDRAC to query")]
         [System.Object] $idracIP,
-
         [Parameter(Mandatory=$true, HelpMessage="Provide a credential object used to authenticate to the API")]
-        [pscredential] $apiCreds
+        [pscredential] $apiCreds,
+
+        [Parameter(Mandatory=$false, HelpMessage="Is the iDRAC on a legacy firmware version (Older than 4.x)")]
+        [Switch] $legacy
     )
     $headers = @{"Accept"="application/json"}
-    $version = Get-iDRACVersion -idracIP $idracIP -apiCreds $apiCreds
-    if($version -lt 4){
+    if($legacy){
         $uri = "https://$idracIP/redfish/v1/Systems/System.Embedded.1/Storage/RAID.Slot.1-1"
         $result = Invoke-RestMethod -Method GET -Uri $uri -Credential $apiCreds -SkipCertificateCheck -Headers $headers
         return $result.StorageControllers.FirmwareVersion

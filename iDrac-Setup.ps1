@@ -210,8 +210,11 @@ do {
 
                 $systemInfo = Get-SystemInfo -idracIP $_.IP -apiCreds $using:currentCred
                 $idracAttributes = Get-iDracAttributes -idracIP $_.IP -apiCreds $using:currentCred
-                $storageVersion = Get-StorageControllerVersion -idracIP $_.IP -apiCreds $using:currentCred
-                $remoteImage = Get-VirtualMediaStatus -idracIP $_.IP -apiCreds $using:currentCred
+                if($idracAttributes.'Info.1.Version' -lt 4){
+                    $storageVersion = Get-StorageControllerVersion -idracIP $_.IP -apiCreds $using:currentCred -legacy
+                }else{
+                    $storageVersion = Get-StorageControllerVersion -idracIP $_.IP -apiCreds $using:currentCred
+                }
 
                 $statusReport = New-Object -TypeName PSObject -Property @{
                     iDRACName = $idracAttributes.'CurrentNIC.1.DNSRacName'
@@ -221,8 +224,8 @@ do {
                     PERCVersion = $storageVersion
                     SyslogServer = $idracAttributes.'SysLog.1.Server1'
                     SyslogEnabled = $idracAttributes.'SysLog.1.SysLogEnable'
-                    RemoteImage = $remoteImage.ConnectedVia
-                    RemoteImagePath = $remoteImage.Image
+                    RemoteImage = $idracAttributes.'RFS.1.MediaAttachState'
+                    RemoteImagePath = $idracAttributes.'RFS.1.Image'
                     PowerState = $systemInfo.PowerState
                 } | Select-Object iDRACName, iDRACIP, iDRACVersion, BIOSVersion, PERCVersion, SyslogServer, SyslogEnabled, RemoteImage, RemoteImagePath, PowerState
                 $dict = $using:threadSafeDictionary
