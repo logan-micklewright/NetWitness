@@ -23,11 +23,17 @@ function Get-StorageControllerVersion{
         [pscredential] $apiCreds
     )
     $headers = @{"Accept"="application/json"}
-    $uri = "https://$idracIP/redfish/v1/Systems/System.Embedded.1/Storage/Oem/Dell/DellControllers/RAID.Slot.1-1"
+    $version = Get-iDRACVersion -idracIP $idracIP -apiCreds $apiCreds
+    if($version -lt 4){
+        $uri = "https://$idracIP/redfish/v1/Systems/System.Embedded.1/Storage/RAID.Slot.1-1"
+        $result = Invoke-RestMethod -Method GET -Uri $uri -Credential $apiCreds -SkipCertificateCheck -Headers $headers
+        return $result.StorageControllers.FirmwareVersion
+    }else{
+        $uri = "https://$idracIP/redfish/v1/Systems/System.Embedded.1/Storage/Oem/Dell/DellControllers/RAID.Slot.1-1"
+        $result = Invoke-RestMethod -Method GET -Uri $uri -Credential $apiCreds -SkipCertificateCheck -Headers $headers
+        return $result.ControllerFirmwareVersion
+    }
 
-    $result = Invoke-RestMethod -Method GET -Uri $uri -Credential $apiCreds -SkipCertificateCheck -Headers $headers
-
-    return $result.ControllerFirmwareVersion
 }
 
 function Get-iDRACVersion{

@@ -142,6 +142,7 @@ do {
             $UpdateFile = $FileChooser.Filename | Get-Item
             $updateFileName = $updateFile.Name
             $updateFilePath = $updateFile.DirectoryName
+            Write-Output 'Beginning Update Process'
 
             $IPAddresses | ForEach-Object -Parallel {
                 Invoke-FirmwareUpdate -idracIP $_.IP -apiCreds $using:currentCred -updateFilePath $using:updateFilePath -updateFileName $using:updateFileName
