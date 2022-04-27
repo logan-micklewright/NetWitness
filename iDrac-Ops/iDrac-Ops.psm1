@@ -32,7 +32,8 @@ function Get-StorageControllerVersion{
     }else{
         $uri = "https://$idracIP/redfish/v1/Systems/System.Embedded.1/Storage/Oem/Dell/DellControllers"
         $result = Invoke-RestMethod -Method GET -Uri $uri -Credential $apiCreds -SkipCertificateCheck -Headers $headers
-        return $result.Members[0].ControllerFirmwareVersion
+        $controller = $result.Members | Where-Object {$_.Id -match "RAID.Slot"} 
+        return $controller.ControllerFirmwareVersion
     }
 
 }
