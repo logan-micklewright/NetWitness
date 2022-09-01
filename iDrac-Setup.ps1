@@ -227,7 +227,8 @@ do {
                     RemoteImage = $idracAttributes.'RFS.1.MediaAttachState'
                     RemoteImagePath = $idracAttributes.'RFS.1.Image'
                     PowerState = $systemInfo.PowerState
-                } | Select-Object iDRACName, iDRACIP, iDRACVersion, BIOSVersion, PERCVersion, SyslogServer, SyslogEnabled, RemoteImage, RemoteImagePath, PowerState
+                    ServiceTag = $systemInfo.SKU
+                } | Select-Object iDRACName, iDRACIP, iDRACVersion, BIOSVersion, PERCVersion, SyslogServer, SyslogEnabled, RemoteImage, RemoteImagePath, PowerState, ServiceTag
                 $dict = $using:threadSafeDictionary
                 $dict.TryAdd($_.IP, $statusReport) | Out-Null
                 $i = $dict.Count
