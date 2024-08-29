@@ -1,12 +1,13 @@
 $apiCreds = Get-Credential -Message "Enter current Admin password to connect" -UserName "admin"
 $updateURI = "/rest/config/ssl?msg=set&force-content-type=text/plain&value=on"
 
+$headunit = Read-Host "What is the IP or Hostname of the NW Head Unit"
+
 $appliancePort="50106"
 
 #Get a list of all known services and hosts using the orchestration client on the head unit
-$headUnit = Read-Host -Prompt "Enter the IP of the head unit"
-$rawServices = ssh root@$headUnit 'orchestration-cli-client -s'
-$rawHosts = ssh root@$headUnit 'orchestration-cli-client -l'
+$rawServices = ssh $headunit 'sudo orchestration-cli-client -s'
+$rawHosts = ssh $headunit 'sudo orchestration-cli-client -l'
 
 
 #The last two lines returned are always messages about the status rather than actual hosts or services, strip them or it breaks proper parsing of the rest
@@ -16,18 +17,18 @@ $rawHosts = $rawHosts[0..($rawHosts.Length-3)]
 #Output from the orchestration client unfortunately has a lot of extra junk in front of it, need to strip that to get the actual data, so chop the beginning of each line up to the part we care about
 $i=0
 while($i -lt $rawServices.Length){
-    $rawServices[$i] = $rawServices[$i].Substring(111)
+    $rawServices[$i] = $rawServices[$i].Substring(109)
     $i++
 }
 $i=0
 while($i -lt $rawHosts.Length){
-    $rawHosts[$i] = $rawHosts[$i].Substring(108)
+    $rawHosts[$i] = $rawHosts[$i].Substring(107)
     $i++
 }
 
 
 #Now that the output is cleaned a little it can be parsed into a usable format
-$servers = $rawHosts | ConvertFrom-Csv -Header ID, IP, Name, Version
+$servers = $rawHosts | ConvertFrom-Csv -Header ID, Name, FQDN, IP, Version
 $servers | Add-Member -NotePropertyName "ApplianceUpdated" -NotePropertyValue "No"
 foreach($server in $servers){
     $server.ID = $server.ID.Substring(3)
@@ -52,7 +53,7 @@ foreach($service in $NWservices){
 
     #Now that we have a nice clean object with all the properties for each service we can proceed to connect to them
     #Not every service type has to be updated so lets look at just the types we care about
-    if(($service.Service -eq "broker") -or ($service.Service -eq "concentrator") -or ($service.Service -match "decoder") -or ($service.Service -eq "log-collector") -or ($service.Service -eq "warehouse-connector")){
+    if(($service.Service -eq "broker") -or ($service.Service -eq "concentrator") -or ($service.Service -match "decoder") -or ($service.Service -match "log-decoder") -or ($service.Service -eq "log-collector") -or ($service.Service -eq "warehouse-connector")){
         $thisIP = $service.IP
         $thisPort = $service.Port
         switch($thisPort){

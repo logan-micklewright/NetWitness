@@ -294,38 +294,31 @@ function Invoke-FirmwareUpdate{
 
     # Code to read the image file for download to the iDRAC
     $complete_path="$updateFilePath\$updateFileName"
+    $idrac_username = $apiCreds.UserName
+    $idrac_password = $apiCreds.GetNetworkCredential().Password
+    $CurlExecutable = "curl.exe"
+    $idrac_username_password = $idrac_username+":"+$idrac_password 
 
-    $CODEPAGE = "iso-8859-1"
-    $fileBin = [System.IO.File]::ReadAllBytes($complete_path)
-    $enc = [System.Text.Encoding]::GetEncoding($CODEPAGE)
-    $fileEnc = $enc.GetString($fileBin)
-    $boundary = [System.Guid]::NewGuid().ToString()
+    $result = & $CurlExecutable --request POST https://$idracIP/redfish/v1/UpdateService/FirmwareInventory --header "If-Match: $ETag" --header "content-type: multipart/form-data" --form file=@$complete_path --insecure -u $idrac_username_password
+    $result = [string]$result
+    $get_version = [regex]::Match($result, 'Available.+?,').captures.groups[0].value
+    $get_version = $get_version.Replace(",","")
+    $get_version = $get_version.Replace('"',"")
+    $global:available_entry = "/redfish/v1/UpdateService/FirmwareInventory/"+$get_version
 
-    $LF = "`r`n"
-    $body = (
-            "--$boundary",
-            "Content-Disposition: form-data; name=`"file`"; filename=`"$updateFileName`"",
-            "Content-Type: application/octet-stream$LF",
-            $fileEnc,
-            "--$boundary",
-            "Content-Disposition: form-data; name=`"importConfig`"; filename=`"$updateFileName`"",
-            "Content-Type: application/octet-stream$LF",
-            "--$boundary--$LF"
-    ) -join $LF
-
-    $result = Invoke-WebRequest -Method POST -Uri $uri -Credential $apiCreds -SkipCertificateCheck -SkipHeaderValidation -Headers $headers -Body $body -ContentType "multipart/form-data; boundary=`"$boundary`""
-    
     #Check whether the file was uploaded successfully
-    if ($result.StatusCode -ne 201){
-        Write-Host "The firmware file failed to upload to the idrac. Status code: $statusCode"
-        return $result
-    }else{
+    if ($result.Contains("Package successfully downloaded")){
         #Now that the image file is uploaded time to install it
+        Write-Host "Firmware file uploaded successfully. Scheduling the install."
         $headers = @{"Accept"="application/json"}
-        $JsonBody = '{"ImageURI":"'+$result.headers.location+'"}'
+        $image_uri = [string]$global:available_entry
+        $JsonBody = @{'ImageURI'= $image_uri} | ConvertTo-Json -Compress
         $uri = "https://$idracIP/redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate"
         $result = Invoke-RestMethod -SkipCertificateCheck -Uri $uri -Credential $apiCreds -Body $JsonBody -Method POST -Headers $headers -ContentType 'application/json'
         return $result
+    }else{
+        Write-Host "The firmware file failed to upload to the idrac. $result"
+        return $result        
     }
     
 }
