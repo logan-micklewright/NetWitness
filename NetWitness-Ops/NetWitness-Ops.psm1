@@ -1,14 +1,16 @@
 function Get-NWServices{
     param(
         [Parameter(Mandatory=$true, ValueFromPipeline=$true, HelpMessage="Enter the hostname or IP of the NW head unit to query for available services")]
-        [String] $NWHost
+        [String] $NWHost,
+        [Parameter(Mandatory=$true, ValueFromPipeline=$false, HelpMessage="Enter the username used for the ssh connection to the NWHost (Must have sudo privileges)")]
+        [String] $NWUser
     )
 
     #Create an object to hold our services once we've collected and parsed the data
     $NWServices = @()
 
     #Get a list of all known services using the orchestration client on the head unit
-    $rawServices = ssh root@$NWHost 'orchestration-cli-client -s'
+    $rawServices = ssh $NWUser@$NWHost 'sudo orchestration-cli-client -s'
 
 
     #The last two lines returned are always messages about the status rather than actual hosts or services, strip them or it breaks proper parsing of the rest
@@ -51,14 +53,16 @@ function Get-NWServices{
 function Get-NWHosts{
     param(
         [Parameter(Mandatory=$true, ValueFromPipeline=$true, HelpMessage="Enter the hostname or IP of the NW head unit to query for available hosts")]
-        [String] $NWHost
+        [String] $NWHost,
+        [Parameter(Mandatory=$true, ValueFromPipeline=$false, HelpMessage="Enter the username used for the ssh connection to the NWHost (Must have sudo privileges)")]
+        [String] $NWUser
     )
 
     #Create an object to hold our services once we've collected and parsed the data
     $NWHosts = @()
 
     #Get a list of all known services using the orchestration client on the head unit
-    $rawHosts = ssh root@$NWHost 'orchestration-cli-client -l'
+    $rawHosts = ssh $NWUser@$NWHost 'sudo orchestration-cli-client -l'
 
 
     #The last two lines returned are always messages about the status rather than actual hosts or services, strip them or it breaks proper parsing of the rest
@@ -241,7 +245,7 @@ function Get-Parsers {
         $ip = $service.IP
         $name = $service.Name
         $serviceURI = "https://$ip"+$queryURI
-        Write-Host "Querying Parsers on $name"
+        Write-Output "Querying Parsers on $name"
         $result = Invoke-RestMethod -Uri "$serviceURI" -Credential $apiCreds -SkipCertificateCheck
         foreach ($node in $result.nodes){
             if (($node.name -ne "uuid") -and ($node.name -ne "dateInstalled")){

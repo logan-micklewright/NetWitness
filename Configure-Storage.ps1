@@ -53,7 +53,8 @@ Finally replace the : with = in each line so that we can pass the whole thing to
 $controllers = $controllers.string.trim()
 $controllers = $controllers.Split("`n`n")
 foreach ($controller in $controllers){
-    $controllerInfo = (($controller -split '\n')[0] -replace "\sat.*,",",").Split(", ")
+    $controllerInfo = (($controller -split '\n')[0] ).Split(", ")
+    $controllerInfo[0] = $controllerInfo[0].substring(0,12)
     $controller = $controller.Substring($controller.IndexOf('Vendor'))
     $controller = $controller -replace "             .*"
     $controller = ($controllerInfo -replace " ","=") + ($controller -replace "Devices:","Devices: ")
@@ -62,12 +63,13 @@ foreach ($controller in $controllers){
     if ($controller.'In Use' -eq "false"){
         $enclosure = $controller.Enclosure
         $number = $controller.Controller
+        Write-Output "Attempting to create new raid on Enclosure $enclosure connected to controller $number for $service"
         $raidNew = "/appliance?msg=raidNew&force-content-type=text/plain&controller=$number&enclosure=$enclosure&scheme=$service&commit=1"
         $apiURI = "https://$endpointToConfig"+":"+$appliancePort+$raidNew
         Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
     }
 }
-
+Start-Sleep 10
 #Now that we have created raids on each enclosure, get a list of the storage devices available so we can partition them
 $devList = "/appliance?msg=devlist&force-content-type=text/plain"
 $apiURI = "https://$endpointToConfig"+":"+$appliancePort+$devList
@@ -206,10 +208,13 @@ if($service -eq "concentrator"){
 
 if($service -eq "decoder"){    
     #Finally once the storage has been allocated we need to update config values for the service
-    $apiURI="https://$endpointToConfig"+":"+$decoderPort+"/decoder?msg=reconfig&force-content-type=text/plain&update=1"
+    $apiURI="https://$endpointToConfig"+":"+$decoderPort+"/decoder?msg=reconfig&force-content-type=text/plain&update=1&op=10g"
     Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
     Start-Sleep -s 2
-    $apiURI="https://$endpointToConfig"+":"+$decoderPort+"/database?msg=reconfig&force-content-type=text/plain&update=1"
+    $apiURI="https://$endpointToConfig"+":"+$decoderPort+"/database?msg=reconfig&force-content-type=text/plain&update=1&op=10g"
+    Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
+    Start-Sleep -s 2
+    $apiURI="https://$endpointToConfig"+":"+$decoderPort+"/index?msg=reconfig&force-content-type=text/plain&update=1"
     Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
 }
 if($service -eq "logdecoder"){
@@ -226,6 +231,9 @@ if($service -eq "concentrator"){
     $apiURI="https://$endpointToConfig"+":"+$concentratorPort+"/concentrator?msg=reconfig&force-content-type=text/plain&update=1"
     Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
     Start-Sleep -s 2
-    $apiURI="https://$endpointToConfig"+":"+$concentratorPort+"/database?msg=reconfig&force-content-type=text/plain&update=1"
+    $apiURI="https://$endpointToConfig"+":"+$concentratorPort+"/database?msg=reconfig&force-content-type=text/plain&update=1&op=10g"
+    Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
+    Start-Sleep -s 2
+    $apiURI="https://$endpointToConfig"+":"+$decoderPort+"/index?msg=reconfig&force-content-type=text/plain&update=1"
     Invoke-RestMethod -Uri "$apiURI" -Credential $apiCreds -SkipCertificateCheck
 }

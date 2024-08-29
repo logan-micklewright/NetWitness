@@ -7,6 +7,6 @@ $decoders = Get-NWDecoders -NWHost $nwServer
 
 $parsers = Get-Parsers -apiCreds $apiCreds -NWServices $decoders
 
-$parsers | Out-Csv -Path ./parsers.csv
+$parsers | Export-Csv -Path ./parsers.csv
 
 $parsers | Out-file -Path ./parsers.txt
